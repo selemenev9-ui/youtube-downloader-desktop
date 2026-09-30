@@ -11,13 +11,13 @@ const ffmpegPath = path.join(binPath, "ffmpeg.exe");
 
 function createWindow() {
   const { width: workWidth, height: workHeight } = screen.getPrimaryDisplay().workAreaSize;
-  const windowWidth = Math.max(920, Math.min(1240, Math.floor(workWidth * 0.86)));
-  const windowHeight = Math.max(620, Math.min(800, Math.floor(workHeight * 0.86)));
+  const windowWidth = Math.max(880, Math.min(1120, Math.floor(workWidth * 0.72)));
+  const windowHeight = Math.max(520, Math.min(640, Math.floor(workHeight * 0.74)));
   const win = new BrowserWindow({
     width: windowWidth,
     height: windowHeight,
-    minWidth: 900,
-    minHeight: 600,
+    minWidth: 860,
+    minHeight: 500,
     resizable: true,
     maximizable: false,
     fullscreenable: false,

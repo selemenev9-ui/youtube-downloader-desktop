@@ -1,0 +1,48 @@
+{
+  "name": "yt-downloader",
+  "version": "1.0.0",
+  "description": "Standalone portable YouTube downloader powered by yt-dlp and ffmpeg",
+  "main": "main.js",
+  "author": "Evgeny Selemenev",
+  "scripts": {
+    "start": "vite build && electron .",
+    "build:ui": "vite build",
+    "dist": "vite build && electron-builder --win"
+  },
+  "license": "MIT",
+  "build": {
+    "compression": "store",
+    "appId": "com.simpleytdownloader.app",
+    "productName": "YT Downloader",
+    "files": [
+      "main.js",
+      "preload.js",
+      "dist-ui/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "extraResources": [
+      {
+        "from": "bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ]
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^44.5.1",
+    "electron-builder": "^26.15.3",
+    "framer-motion": "^13.4.6",
+    "lucide-react": "^1.49.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.1"
+  }
+}

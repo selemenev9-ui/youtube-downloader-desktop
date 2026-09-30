@@ -11,6 +11,5 @@ contextBridge.exposeInMainWorld("api", {
   onDone: (callback) =>
     ipcRenderer.on("download:done", (_event, result) => callback(result)),
   minimize: () => ipcRenderer.send("window:minimize"),
-  maximize: () => ipcRenderer.send("window:maximize"),
   close: () => ipcRenderer.send("window:close"),
 });

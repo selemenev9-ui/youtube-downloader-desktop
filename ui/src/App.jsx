@@ -11,7 +11,7 @@ function formatDate(d) { if (!d || d.length !== 8) return null; return new Date(
 function tier(id) { if (id === "audio") return { short: "MP3", hint: "Audio only", tone: "mint" }; const h = Number(id); if (h >= 2160) return { short: "4K", hint: "Ultra HD", tone: "violet" }; if (h >= 1440) return { short: "2K", hint: "Quad HD", tone: "blue" }; if (h >= 1080) return { short: "FHD", hint: "Full HD", tone: "cyan" }; return { short: "HD", hint: "High definition", tone: "cyan" }; }
 
 function WindowBar() {
-  return <div className="window-bar"><div className="window-drag"><span className="window-mark"><Play fill="currentColor" /></span><span>YouTube Downloader</span></div><div className="window-controls"><button onClick={() => window.api?.minimize?.()}><Minus /></button><button onClick={() => window.api?.maximize?.()}><span className="maximize-icon" /></button><button className="window-close" onClick={() => window.api?.close?.()}><X /></button></div></div>;
+  return <div className="window-bar"><div className="window-drag"><span className="window-mark"><Play fill="currentColor" /></span><span>YouTube Downloader</span></div><div className="window-controls"><button onClick={() => window.api?.minimize?.()} aria-label="Minimize"><Minus /></button><button className="window-close" onClick={() => window.api?.close?.()} aria-label="Close"><X /></button></div></div>;
 }
 
 function NavButton({ icon: Icon, label, active, onClick }) { return <button className={`nav-button ${active ? "is-active" : ""}`} onClick={onClick}><span><Icon /></span><b>{label}</b>{active && <motion.i layoutId="nav-dot" />}</button>; }
@@ -36,6 +36,7 @@ function InfoModal({ kind, onClose }) {
         <span className="modal-symbol about"><UserRound /></span><small className="modal-kicker">MADE WITH CARE</small><h2>Crafted by Evgenii Selemenev</h2><p className="modal-lead">A focused desktop utility built to make high-quality downloads feel simple, fast and beautiful.</p>
         <div className="author-card"><div className="author-avatar">ES</div><div><b>Evgenii Selemenev</b><span>Designer & Developer</span></div><div className="discord-chip"><i />Discord · TOTORO<br/><small>@devilren</small></div></div>
         <div className="promise-row"><span><Check />Free forever</span><span><Check />No ads</span><span><Check />No tracking</span></div>
+        <p className="legal-note">Powered by yt-dlp and FFmpeg. Not affiliated with YouTube or Google.</p>
       </>}
     </motion.section>
   </motion.div>;

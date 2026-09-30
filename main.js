@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 
@@ -10,15 +10,18 @@ const ytDlpPath = path.join(binPath, "yt-dlp.exe");
 const ffmpegPath = path.join(binPath, "ffmpeg.exe");
 
 function createWindow() {
+  const { width: workWidth, height: workHeight } = screen.getPrimaryDisplay().workAreaSize;
+  const windowWidth = Math.max(920, Math.min(1240, Math.floor(workWidth * 0.86)));
+  const windowHeight = Math.max(620, Math.min(800, Math.floor(workHeight * 0.86)));
   const win = new BrowserWindow({
-    width: 1320,
-    height: 820,
-    minWidth: 1050,
-    minHeight: 700,
+    width: windowWidth,
+    height: windowHeight,
+    minWidth: 900,
+    minHeight: 600,
     resizable: true,
     maximizable: false,
     fullscreenable: false,
-    center: true,
+    show: false,
     frame: false,
     backgroundColor: "#080914",
     autoHideMenuBar: true,
@@ -30,6 +33,12 @@ function createWindow() {
   });
 
   win.loadFile(path.join(__dirname, "dist-ui", "index.html"));
+  win.once("ready-to-show", () => {
+    win.setFullScreen(false);
+    if (win.isMaximized()) win.unmaximize();
+    win.center();
+    win.show();
+  });
 }
 
 function buildArgs(url, format, downloadsDir) {
@@ -205,11 +214,6 @@ app.whenReady().then(() => {
 });
 
 ipcMain.on("window:minimize", (event) => BrowserWindow.fromWebContents(event.sender)?.minimize());
-ipcMain.on("window:maximize", (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (!win) return;
-  win.isMaximized() ? win.unmaximize() : win.maximize();
-});
 ipcMain.on("window:close", (event) => BrowserWindow.fromWebContents(event.sender)?.close());
 
 app.on("window-all-closed", () => {

@@ -30,6 +30,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "legal",
+        "to": "legal",
+        "filter": [
+          "**/*"
+        ]
       }
     ]
   },

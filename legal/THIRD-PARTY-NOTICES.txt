@@ -1,0 +1,48 @@
+THIRD-PARTY SOFTWARE NOTICES
+============================
+
+YouTube Downloader includes or invokes third-party software. The original
+application code is licensed separately under the MIT License.
+
+FFmpeg / ffprobe
+----------------
+Copyright (c) 2000-2026 the FFmpeg developers.
+Website: https://ffmpeg.org/
+Source: https://git.ffmpeg.org/ffmpeg.git
+
+The bundled build reports FFmpeg revision d85cdd2597 and was configured with
+--enable-gpl and --enable-version3. It is distributed under the GNU General
+Public License version 3 or later. The license text is available at:
+https://www.gnu.org/licenses/gpl-3.0.txt
+
+The corresponding FFmpeg source can be obtained from the upstream repository
+using the revision above. The full build configuration is displayed by running
+`ffmpeg.exe -version`.
+
+yt-dlp
+------
+Copyright belongs to the yt-dlp contributors.
+Website and source: https://github.com/yt-dlp/yt-dlp
+Primary license: The Unlicense
+License: https://github.com/yt-dlp/yt-dlp/blob/master/LICENSE
+Bundled executable notices:
+https://github.com/yt-dlp/yt-dlp/blob/master/THIRD_PARTY_LICENSES.txt
+
+Electron
+--------
+Copyright (c) Electron contributors and contributors to Chromium.
+Source: https://github.com/electron/electron
+License: MIT and applicable Chromium third-party licenses.
+
+React — MIT — https://github.com/facebook/react
+Lucide — ISC — https://github.com/lucide-icons/lucide
+Motion — MIT — https://github.com/motiondivision/motion
+Tailwind CSS — MIT — https://github.com/tailwindlabs/tailwindcss
+
+No affiliation
+--------------
+YouTube is a trademark of Google LLC. This application is an independent
+project and is not affiliated with, endorsed by, or sponsored by YouTube or
+Google. Users are responsible for downloading only content they own or have
+permission to download and for complying with applicable laws and platform
+terms.

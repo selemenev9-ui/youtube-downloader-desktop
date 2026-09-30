@@ -2,6 +2,8 @@
 
 A polished, privacy-friendly desktop utility for downloading YouTube videos and audio in the quality you choose.
 
+This is an independent project and is not affiliated with, endorsed by, or sponsored by YouTube or Google.
+
 ## Highlights
 
 - Up to 4K video downloads when available
@@ -54,5 +56,6 @@ Download only content you own or have permission to download. Users are responsi
 
 ## License
 
-MIT
+The original application code is available under the MIT License. Bundled third-party components remain under their respective licenses; see `legal/THIRD-PARTY-NOTICES.txt`.
+
 

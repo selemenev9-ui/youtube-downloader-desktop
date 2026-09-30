@@ -11,7 +11,7 @@
   },
   "license": "MIT",
   "build": {
-    "compression": "store",
+    "compression": "normal",
     "appId": "com.simpleytdownloader.app",
     "productName": "YT Downloader",
     "files": [

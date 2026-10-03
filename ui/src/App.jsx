@@ -103,7 +103,7 @@ function NavButton({ icon: Icon, label, active, onClick }) {
     </button>
   );
 }
-function Sidebar({ onSupport, onAbout }) {
+function Sidebar({ page, onNavigate, onSupport, onAbout }) {
   return (
     <aside className="sidebar">
       <div className="brand-orb">
@@ -112,9 +112,19 @@ function Sidebar({ onSupport, onAbout }) {
         </span>
       </div>
       <nav>
-        <NavButton icon={Download} label="Download" active />
+        <NavButton
+          icon={Download}
+          label="Download"
+          active={page === "download"}
+          onClick={() => onNavigate("download")}
+        />
         <NavButton icon={History} label="Queue" />
-        <NavButton icon={Wrench} label="Tools" />
+        <NavButton
+          icon={Wrench}
+          label="Tools"
+          active={page === "tools"}
+          onClick={() => onNavigate("tools")}
+        />
         <NavButton icon={Heart} label="Support" onClick={onSupport} />
         <NavButton icon={UserRound} label="About" onClick={onAbout} />
       </nav>
@@ -127,6 +137,177 @@ function Sidebar({ onSupport, onAbout }) {
         <i />
       </div>
     </aside>
+  );
+}
+
+const SIZE_PRESETS = [
+  { value: 8, label: "8 MB", note: "Safe / legacy" },
+  { value: 20, label: "20 MB", note: "Discord Free" },
+  { value: 50, label: "50 MB", note: "Nitro Basic" },
+  { value: 500, label: "500 MB", note: "Nitro" },
+];
+
+function ToolsWorkspace() {
+  const [file, setFile] = useState(null);
+  const [target, setTarget] = useState(8);
+  const [custom, setCustom] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState(null);
+  useEffect(() => {
+    window.api.onToolProgress((value) => setProgress(value));
+  }, []);
+  const pickFile = async () => {
+    const selected = await window.api.pickMedia();
+    if (selected) {
+      setFile(selected);
+      setResult(null);
+      setProgress(0);
+    }
+  };
+  const targetMb = custom === "" ? target : Number(custom);
+  const compress = async () => {
+    if (!file || busy || !Number.isFinite(targetMb)) return;
+    setBusy(true);
+    setResult(null);
+    setProgress(1);
+    const response = await window.api.compressMedia({
+      path: file.path,
+      targetMb,
+    });
+    setBusy(false);
+    setResult(response);
+  };
+  return (
+    <motion.div
+      className="tools-workspace"
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      <section className="glass-panel tool-intro">
+        <div className="tool-heading">
+          <span className="panel-icon">
+            <Gauge />
+          </span>
+          <div>
+            <small>LOCAL OPTIMIZER</small>
+            <h2>Fit video to an exact size</h2>
+            <p>
+              Perfect for Discord, messengers and upload limits. Nothing leaves
+              your PC.
+            </p>
+          </div>
+        </div>
+        <button
+          className={`file-drop ${file ? "has-file" : ""}`}
+          onClick={pickFile}
+          disabled={busy}
+        >
+          <span>
+            <FolderOpen />
+          </span>
+          <div>
+            <b>{file?.name || "Choose a video"}</b>
+            <small>
+              {file
+                ? `${(file.size / 1024 / 1024).toFixed(1)} MB · ${Math.ceil(file.duration)} sec`
+                : "MP4, MKV, MOV, WebM or AVI"}
+            </small>
+          </div>
+          <em>{file ? "Change" : "Browse"}</em>
+        </button>
+      </section>
+      <section className="glass-panel size-tool">
+        <div className="tool-section-label">
+          <span>OUTPUT LIMIT</span>
+          <b>{targetMb || 0} MB</b>
+        </div>
+        <div className="size-presets">
+          {SIZE_PRESETS.map((preset) => (
+            <button
+              key={preset.value}
+              className={
+                custom === "" && target === preset.value ? "is-selected" : ""
+              }
+              onClick={() => {
+                setTarget(preset.value);
+                setCustom("");
+              }}
+              disabled={busy}
+            >
+              <b>{preset.label}</b>
+              <small>{preset.note}</small>
+            </button>
+          ))}
+        </div>
+        <label className="custom-size">
+          <span>Custom target</span>
+          <div>
+            <input
+              type="number"
+              min="1"
+              max="2000"
+              value={custom}
+              placeholder="Enter size"
+              onChange={(event) => setCustom(event.target.value)}
+              disabled={busy}
+            />
+            <b>MB</b>
+          </div>
+        </label>
+        <button
+          className="compress-button"
+          disabled={!file || busy || targetMb < 1 || targetMb > 2000}
+          onClick={compress}
+        >
+          <Download />
+          <span>
+            <b>{busy ? `Optimizing · ${progress}%` : "Optimize video"}</b>
+            <small>
+              {busy
+                ? "Two-pass precision encoding"
+                : "Save the result to Downloads"}
+            </small>
+          </span>
+        </button>
+        {(busy || result) && (
+          <div
+            className={`tool-result ${result?.ok === false ? "is-error" : ""}`}
+          >
+            {busy ? (
+              <>
+                <div className="tool-progress">
+                  <i style={{ width: `${progress}%` }} />
+                </div>
+                <span>
+                  Keep VantaFetch open while your video is being optimized.
+                </span>
+              </>
+            ) : result.ok ? (
+              <>
+                <Check />
+                <span>Done — saved to your Downloads folder.</span>
+              </>
+            ) : (
+              <>
+                <X />
+                <span>{result.error}</span>
+              </>
+            )}
+          </div>
+        )}
+      </section>
+      <section className="glass-panel tool-note">
+        <ShieldCheck />
+        <div>
+          <b>Private by design</b>
+          <p>
+            Encoding runs entirely on this computer. VantaFetch never uploads
+            your media or requests an account.
+          </p>
+        </div>
+      </section>
+    </motion.div>
   );
 }
 
@@ -177,8 +358,8 @@ function InfoModal({ kind, onClose }) {
             <small className="modal-kicker">OPTIONAL SUPPORT</small>
             <h2>Enjoying the app?</h2>
             <p className="modal-lead">
-              VantaFetch will always stay free and ad-free. If it saved
-              you time, you can support future updates.
+              VantaFetch will always stay free and ad-free. If it saved you
+              time, you can support future updates.
             </p>
             <div className="wallet-list">
               {WALLETS.map((wallet) => (
@@ -647,6 +828,7 @@ function DownloadsPanel({ downloads, onClearCompleted, onRemove }) {
 }
 
 export default function App() {
+  const [page, setPage] = useState("download");
   const [url, setUrl] = useState("");
   const [formats, setFormats] = useState([]);
   const [selected, setSelected] = useState("");
@@ -760,6 +942,8 @@ export default function App() {
       <div className="ambient ambient-two" />
       <div className="app-body">
         <Sidebar
+          page={page}
+          onNavigate={setPage}
           onSupport={() => setModal("support")}
           onAbout={() => setModal("about")}
         />
@@ -770,10 +954,10 @@ export default function App() {
                 <Sparkles />
                 PRIVATE · LOCAL · UNIVERSAL
               </span>
-          <h1>
-            Vanta<em>Fetch</em>
-          </h1>
-          <p>Universal media downloader. Zero ads, zero tracking.</p>
+              <h1>
+                Vanta<em>Fetch</em>
+              </h1>
+              <p>Universal media downloader. Zero ads, zero tracking.</p>
             </div>
             <div className="hero-right">
               <div className="free-badge">
@@ -792,45 +976,49 @@ export default function App() {
               </div>
             </div>
           </header>
-          <div className="bento-grid">
-            <UrlPanel
-              url={url}
-              setUrl={setUrl}
-              onClear={clearUrl}
-              onFetch={() => fetchVideo(url.trim())}
-              busy={busy}
-              fetching={fetching}
-              valid={valid}
-            />
-            <PreviewPanel meta={meta} fetching={fetching} />
-            <div className="actions-grid">
-              <QualityPanel
-                formats={formats}
-                selected={selected}
-                setSelected={setSelected}
+          {page === "tools" ? (
+            <ToolsWorkspace />
+          ) : (
+            <div className="bento-grid">
+              <UrlPanel
+                url={url}
+                setUrl={setUrl}
+                onClear={clearUrl}
+                onFetch={() => fetchVideo(url.trim())}
                 busy={busy}
+                fetching={fetching}
+                valid={valid}
               />
-              <DownloadPanel
-                ready={ready}
-                busy={busy}
-                statusText={statusText}
-                onClick={startDownload}
+              <PreviewPanel meta={meta} fetching={fetching} />
+              <div className="actions-grid">
+                <QualityPanel
+                  formats={formats}
+                  selected={selected}
+                  setSelected={setSelected}
+                  busy={busy}
+                />
+                <DownloadPanel
+                  ready={ready}
+                  busy={busy}
+                  statusText={statusText}
+                  onClick={startDownload}
+                />
+              </div>
+              <DownloadsPanel
+                downloads={downloads}
+                onClearCompleted={() =>
+                  setDownloads((items) =>
+                    items.filter(
+                      (d) => d.status !== "done" && d.status !== "error",
+                    ),
+                  )
+                }
+                onRemove={(id) =>
+                  setDownloads((items) => items.filter((d) => d.id !== id))
+                }
               />
             </div>
-            <DownloadsPanel
-              downloads={downloads}
-              onClearCompleted={() =>
-                setDownloads((items) =>
-                  items.filter(
-                    (d) => d.status !== "done" && d.status !== "error",
-                  ),
-                )
-              }
-              onRemove={(id) =>
-                setDownloads((items) => items.filter((d) => d.id !== id))
-              }
-            />
-          </div>
+          )}
           <button className="signature" onClick={() => setModal("about")}>
             Made by Evgenii Selemenev · @devilren
           </button>

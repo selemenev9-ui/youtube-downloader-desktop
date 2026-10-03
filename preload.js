@@ -5,7 +5,12 @@ contextBridge.exposeInMainWorld("api", {
   probeMedia: (url) => ipcRenderer.invoke("media:probe", url),
   createJob: (payload) => ipcRenderer.invoke("jobs:create", payload),
   cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
-  onJobChange: (callback) => ipcRenderer.on("jobs:change", (_event, job) => callback(job)),
+  pickMedia: () => ipcRenderer.invoke("tools:pick-media"),
+  compressMedia: (payload) => ipcRenderer.invoke("tools:compress", payload),
+  onToolProgress: (callback) =>
+    ipcRenderer.on("tools:progress", (_event, progress) => callback(progress)),
+  onJobChange: (callback) =>
+    ipcRenderer.on("jobs:change", (_event, job) => callback(job)),
   startDownload: (url, format) =>
     ipcRenderer.send("download:start", { url, format }),
   onStatus: (callback) =>

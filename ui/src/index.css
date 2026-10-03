@@ -1637,6 +1637,40 @@ button {
   width: 10px;
   color: #52dcbe;
 }
+.about-update-card {
+  min-height: 53px;
+  margin-top: 10px;
+  padding: 9px 10px 9px 13px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 13px;
+  background: rgba(5, 7, 16, 0.42);
+}
+.about-update-card > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.about-update-card b {
+  color: #bfc4d8;
+  font-size: 9px;
+}
+.about-update-card span {
+  margin-top: 3px;
+  color: #626b87;
+  font-size: 7.5px;
+}
+.about-update-card button {
+  height: 31px;
+  padding: 0 10px;
+  border: 1px solid rgba(133, 106, 220, 0.25);
+  border-radius: 9px;
+  color: #aa9ddd;
+  background: rgba(105, 75, 179, 0.14);
+  font-size: 7.5px;
+}
 @media (max-width: 1180px) {
   .workspace {
     padding: 26px;

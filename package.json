@@ -1,12 +1,13 @@
 {
   "name": "vantafetch",
-  "version": "2.0.0-alpha.2",
+  "version": "2.0.0",
   "description": "Private local universal media downloader and optimizer",
-  "main": "main.js",
+  "main": "bootstrap.js",
   "author": "Evgeny Selemenev",
   "scripts": {
     "start": "vite build && electron .",
     "build:ui": "vite build",
+    "build:module": "vite build && node scripts/build-module.js",
     "dist": "vite build && electron-builder --win"
   },
   "license": "MIT",
@@ -16,6 +17,7 @@
     "productName": "VantaFetch",
     "files": [
       "main.js",
+      "bootstrap.js",
       "preload.js",
       "src/main/**/*",
       "dist-ui/**/*",
@@ -46,7 +48,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "electron": "^44.5.1",
-    "electron-builder": "26.5.0",
+    "electron-builder": "26.15.3",
     "framer-motion": "^13.4.6",
     "lucide-react": "^1.49.0",
     "react": "^19.3.0",

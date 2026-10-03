@@ -619,7 +619,15 @@ const WALLETS = [
   },
 ];
 
-function InfoModal({ kind, onClose }) {
+function InfoModal({
+  kind,
+  onClose,
+  appVersion,
+  checkingUpdate,
+  updateInfo,
+  onCheckUpdate,
+  onInstallUpdate,
+}) {
   const [copied, setCopied] = useState("");
   const copyAddress = async (address) => {
     await navigator.clipboard.writeText(address);
@@ -713,6 +721,28 @@ function InfoModal({ kind, onClose }) {
                 <Check />
                 No tracking
               </span>
+            </div>
+            <div className="about-update-card">
+              <div>
+                <b>VantaFetch {appVersion || "2.0.0"}</b>
+                <span>
+                  {updateInfo?.available
+                    ? `Version ${updateInfo.version} is available`
+                    : "Modular updates enabled"}
+                </span>
+              </div>
+              <button
+                onClick={
+                  updateInfo?.available ? onInstallUpdate : onCheckUpdate
+                }
+                disabled={checkingUpdate}
+              >
+                {checkingUpdate
+                  ? "Checking…"
+                  : updateInfo?.available
+                    ? "Update & restart"
+                    : "Check updates"}
+              </button>
             </div>
             <p className="legal-note">
               Powered by yt-dlp and FFmpeg. Not affiliated with YouTube or
@@ -1162,6 +1192,10 @@ function DownloadsPanel({ downloads, onClearCompleted, onRemove }) {
 export default function App() {
   const [page, setPage] = useState("download");
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [engineStatus, setEngineStatus] = useState({ state: "ready" });
+  const [appVersion, setAppVersion] = useState("");
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateProgress, setUpdateProgress] = useState(0);
   const [url, setUrl] = useState("");
   const [formats, setFormats] = useState([]);
   const [selected, setSelected] = useState("");
@@ -1175,13 +1209,37 @@ export default function App() {
   const activeDownload = useRef(null);
   const fetchTimer = useRef(null);
   const fetchRequest = useRef(0);
+  const checkForUpdates = async () => {
+    setCheckingUpdate(true);
+    const info = await window.api.checkForUpdates();
+    setCheckingUpdate(false);
+    setUpdateInfo(info?.available ? info : { ...info, available: false });
+    return info;
+  };
+  const installUpdate = async () => {
+    if (!updateInfo?.available) return;
+    if (updateInfo.updateType !== "module")
+      return window.api.openUpdate(updateInfo.url);
+    setCheckingUpdate(true);
+    setUpdateProgress(1);
+    const result = await window.api.installUpdate();
+    if (result.ok) return window.api.restartForUpdate();
+    setCheckingUpdate(false);
+    setUpdateInfo((info) => ({ ...info, error: result.error }));
+  };
   useEffect(() => {
+    window.api.getVersion().then(setAppVersion);
+    const unsubscribe = window.api.onUpdateProgress(setUpdateProgress);
     const timer = setTimeout(async () => {
       const info = await window.api.checkForUpdates();
       if (info?.available) setUpdateInfo(info);
     }, 1800);
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
+  useEffect(() => window.api.onEngineStatus(setEngineStatus), []);
   const patchActive = (patch) => {
     const id = activeDownload.current;
     if (id)
@@ -1296,7 +1354,7 @@ export default function App() {
         />
         <main className="workspace">
           <AnimatePresence>
-            {updateInfo && (
+            {updateInfo?.available && (
               <motion.div
                 className="update-banner"
                 initial={{ opacity: 0, y: -18, height: 0 }}
@@ -1308,11 +1366,19 @@ export default function App() {
                 </span>
                 <div>
                   <b>VantaFetch {updateInfo.version} is available</b>
-                  <small>A newer portable build is ready on GitHub.</small>
+                  <small>
+                    {updateInfo.updateType === "module"
+                      ? `Verified modular update · ${(updateInfo.size / 1024 / 1024).toFixed(1)} MB`
+                      : "A base application update is required."}
+                  </small>
                 </div>
-                <button onClick={() => window.api.openUpdate(updateInfo.url)}>
+                <button onClick={installUpdate} disabled={checkingUpdate}>
                   <Download />
-                  View release
+                  {checkingUpdate
+                    ? `Updating ${updateProgress}%`
+                    : updateInfo.updateType === "module"
+                      ? "Update & restart"
+                      : "View release"}
                 </button>
                 <button
                   className="update-dismiss"
@@ -1347,7 +1413,13 @@ export default function App() {
                 <i />
                 <span>
                   <small>ENGINE STATUS</small>
-                  <b>Ready</b>
+                  <b>
+                    {engineStatus.state === "checking"
+                      ? "Updating…"
+                      : engineStatus.updated
+                        ? "Updated"
+                        : "Ready"}
+                  </b>
                 </span>
               </div>
             </div>
@@ -1405,7 +1477,17 @@ export default function App() {
         </main>
       </div>
       <AnimatePresence>
-        {modal && <InfoModal kind={modal} onClose={() => setModal(null)} />}
+        {modal && (
+          <InfoModal
+            kind={modal}
+            onClose={() => setModal(null)}
+            appVersion={appVersion}
+            checkingUpdate={checkingUpdate}
+            updateInfo={updateInfo}
+            onCheckUpdate={checkForUpdates}
+            onInstallUpdate={installUpdate}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

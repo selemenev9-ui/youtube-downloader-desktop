@@ -14,20 +14,23 @@ const {
   UpdateService,
   RELEASES_PREFIX,
 } = require("./src/main/services/UpdateService");
+const {
+  EngineUpdateService,
+} = require("./src/main/services/EngineUpdateService");
 
 const binPath = app.isPackaged
   ? path.join(process.resourcesPath, "bin")
-  : path.join(__dirname, "bin");
-const downloader = new YtDlpService({
-  executable: path.join(binPath, "yt-dlp.exe"),
-  ffmpeg: path.join(binPath, "ffmpeg.exe"),
-});
+  : path.join(process.env.VANTAFETCH_BOOTSTRAP_DIR || __dirname, "bin");
+let downloader;
 const mediaTools = new FfmpegService({
   ffmpeg: path.join(binPath, "ffmpeg.exe"),
   ffprobe: path.join(binPath, "ffprobe.exe"),
 });
 let jobs;
 let updates;
+let engineUpdates;
+const currentVersion =
+  process.env.VANTAFETCH_MODULE_VERSION || app.getVersion();
 
 function createWindow() {
   const { width: workWidth, height: workHeight } =
@@ -53,6 +56,9 @@ function createWindow() {
     },
   });
   win.loadFile(path.join(__dirname, "dist-ui", "index.html"));
+  win.webContents.once("did-finish-load", () =>
+    global.__vantafetchMarkHealthy?.(),
+  );
   win.once("ready-to-show", () => {
     win.setFullScreen(false);
     if (win.isMaximized()) win.unmaximize();
@@ -62,7 +68,24 @@ function createWindow() {
 }
 
 function registerIpc() {
+  ipcMain.handle("app:version", () => currentVersion);
   ipcMain.handle("updates:check", () => updates.check());
+  ipcMain.handle("updates:install", async (event) => {
+    try {
+      const result = await updates.install((progress) =>
+        event.sender.send("updates:progress", progress),
+      );
+      return { ok: true, ...result };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+  ipcMain.handle("updates:restart", () => {
+    const portable = process.env.PORTABLE_EXECUTABLE_FILE;
+    app.relaunch(portable ? { execPath: portable } : undefined);
+    app.exit(0);
+    return true;
+  });
   ipcMain.handle("updates:open", async (_event, url) => {
     if (typeof url !== "string" || !url.startsWith(RELEASES_PREFIX))
       return false;
@@ -220,15 +243,38 @@ function registerIpc() {
   });
 }
 
-app.whenReady().then(() => {
-  jobs = new JobManager({ downloader, outputDir: app.getPath("downloads") });
-  updates = new UpdateService({ currentVersion: app.getVersion() });
-  registerIpc();
-  createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+app
+  .whenReady()
+  .then(() => {
+    engineUpdates = new EngineUpdateService({
+      bundledExecutable: path.join(binPath, "yt-dlp.exe"),
+      dataDirectory: path.join(app.getPath("userData"), "engine"),
+    });
+    return engineUpdates.prepare();
+  })
+  .then((engineExecutable) => {
+    downloader = new YtDlpService({
+      executable: engineExecutable,
+      ffmpeg: path.join(binPath, "ffmpeg.exe"),
+    });
+    jobs = new JobManager({ downloader, outputDir: app.getPath("downloads") });
+    updates = new UpdateService({
+      currentVersion,
+      moduleDirectory: path.join(app.getPath("userData"), "app-modules"),
+    });
+    registerIpc();
+    createWindow();
+    setTimeout(async () => {
+      for (const win of BrowserWindow.getAllWindows())
+        win.webContents.send("engine:status", { state: "checking" });
+      const result = await engineUpdates.checkAndUpdate();
+      for (const win of BrowserWindow.getAllWindows())
+        win.webContents.send("engine:status", { state: "ready", ...result });
+    }, 3500);
+    app.on("activate", () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
   });
-});
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();

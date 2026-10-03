@@ -294,6 +294,75 @@ button {
   align-items: end;
   justify-content: space-between;
 }
+.update-banner {
+  max-width: 1450px;
+  min-height: 55px;
+  margin: 0 auto 17px;
+  padding: 8px 10px 8px 13px;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  overflow: hidden;
+  border: 1px solid rgba(99, 223, 216, 0.18);
+  border-radius: 15px;
+  background: linear-gradient(
+    100deg,
+    rgba(34, 104, 112, 0.22),
+    rgba(83, 55, 151, 0.19)
+  );
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+}
+.update-symbol {
+  width: 33px;
+  height: 33px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  color: #7ce9df;
+  background: rgba(54, 201, 190, 0.11);
+}
+.update-symbol svg {
+  width: 15px;
+}
+.update-banner > div {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.update-banner > div b {
+  color: #d7dbea;
+  font-size: 9.5px;
+}
+.update-banner > div small {
+  margin-top: 3px;
+  color: #69738f;
+  font-size: 7.5px;
+}
+.update-banner > button:not(.update-dismiss) {
+  height: 33px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(158, 132, 237, 0.25);
+  border-radius: 10px;
+  color: #c8c0ea;
+  background: rgba(98, 69, 171, 0.19);
+  font-size: 8px;
+}
+.update-banner > button svg {
+  width: 12px;
+}
+.update-dismiss {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  color: #646d88;
+  background: transparent;
+}
 .hero-kicker {
   display: flex;
   align-items: center;

@@ -1,8 +1,19 @@
-const { app, BrowserWindow, dialog, ipcMain, screen } = require("electron");
+const {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  screen,
+  shell,
+} = require("electron");
 const path = require("path");
 const { YtDlpService } = require("./src/main/services/YtDlpService");
 const { JobManager } = require("./src/main/jobs/JobManager");
 const { FfmpegService } = require("./src/main/services/FfmpegService");
+const {
+  UpdateService,
+  RELEASES_PREFIX,
+} = require("./src/main/services/UpdateService");
 
 const binPath = app.isPackaged
   ? path.join(process.resourcesPath, "bin")
@@ -16,6 +27,7 @@ const mediaTools = new FfmpegService({
   ffprobe: path.join(binPath, "ffprobe.exe"),
 });
 let jobs;
+let updates;
 
 function createWindow() {
   const { width: workWidth, height: workHeight } =
@@ -50,6 +62,13 @@ function createWindow() {
 }
 
 function registerIpc() {
+  ipcMain.handle("updates:check", () => updates.check());
+  ipcMain.handle("updates:open", async (_event, url) => {
+    if (typeof url !== "string" || !url.startsWith(RELEASES_PREFIX))
+      return false;
+    await shell.openExternal(url);
+    return true;
+  });
   ipcMain.handle("media:probe", async (_event, url) => {
     try {
       return await downloader.probe(url);
@@ -195,6 +214,7 @@ function registerIpc() {
 
 app.whenReady().then(() => {
   jobs = new JobManager({ downloader, outputDir: app.getPath("downloads") });
+  updates = new UpdateService({ currentVersion: app.getVersion() });
   registerIpc();
   createWindow();
   app.on("activate", () => {

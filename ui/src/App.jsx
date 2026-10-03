@@ -1124,6 +1124,7 @@ function DownloadsPanel({ downloads, onClearCompleted, onRemove }) {
 
 export default function App() {
   const [page, setPage] = useState("download");
+  const [updateInfo, setUpdateInfo] = useState(null);
   const [url, setUrl] = useState("");
   const [formats, setFormats] = useState([]);
   const [selected, setSelected] = useState("");
@@ -1136,6 +1137,13 @@ export default function App() {
   const activeDownload = useRef(null);
   const fetchTimer = useRef(null);
   const fetchRequest = useRef(0);
+  useEffect(() => {
+    const timer = setTimeout(async () => {
+      const info = await window.api.checkForUpdates();
+      if (info?.available) setUpdateInfo(info);
+    }, 1800);
+    return () => clearTimeout(timer);
+  }, []);
   const patchActive = (patch) => {
     const id = activeDownload.current;
     if (id)
@@ -1243,6 +1251,35 @@ export default function App() {
           onAbout={() => setModal("about")}
         />
         <main className="workspace">
+          <AnimatePresence>
+            {updateInfo && (
+              <motion.div
+                className="update-banner"
+                initial={{ opacity: 0, y: -18, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+              >
+                <span className="update-symbol">
+                  <Sparkles />
+                </span>
+                <div>
+                  <b>VantaFetch {updateInfo.version} is available</b>
+                  <small>A newer portable build is ready on GitHub.</small>
+                </div>
+                <button onClick={() => window.api.openUpdate(updateInfo.url)}>
+                  <Download />
+                  View release
+                </button>
+                <button
+                  className="update-dismiss"
+                  onClick={() => setUpdateInfo(null)}
+                  aria-label="Dismiss update"
+                >
+                  <X />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <header className="hero-heading">
             <div>
               <span className="hero-kicker">

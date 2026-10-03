@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld("api", {
   probeMedia: (url) => ipcRenderer.invoke("media:probe", url),
   createJob: (payload) => ipcRenderer.invoke("jobs:create", payload),
   cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
+  checkForUpdates: () => ipcRenderer.invoke("updates:check"),
+  openUpdate: (url) => ipcRenderer.invoke("updates:open", url),
   pickMedia: () => ipcRenderer.invoke("tools:pick-media"),
   pickWatermark: () => ipcRenderer.invoke("tools:pick-watermark"),
   compressMedia: (payload) => ipcRenderer.invoke("tools:compress", payload),

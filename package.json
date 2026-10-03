@@ -1,7 +1,7 @@
 {
-  "name": "yt-downloader",
-  "version": "1.0.0",
-  "description": "Standalone portable YouTube downloader powered by yt-dlp and ffmpeg",
+  "name": "vantafetch",
+  "version": "2.0.0-alpha.1",
+  "description": "Private local universal media downloader and optimizer",
   "main": "main.js",
   "author": "Evgeny Selemenev",
   "scripts": {
@@ -12,11 +12,12 @@
   "license": "MIT",
   "build": {
     "compression": "normal",
-    "appId": "com.simpleytdownloader.app",
-    "productName": "YT Downloader",
+    "appId": "com.devilren.vantafetch",
+    "productName": "VantaFetch",
     "files": [
       "main.js",
       "preload.js",
+      "src/main/**/*",
       "dist-ui/**/*",
       "package.json"
     ],
@@ -45,7 +46,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^6.1.1",
     "electron": "^44.5.1",
-    "electron-builder": "^26.15.3",
+    "electron-builder": "26.5.0",
     "framer-motion": "^13.4.6",
     "lucide-react": "^1.49.0",
     "react": "^19.3.0",

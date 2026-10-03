@@ -1,7 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
-  fetchFormats: (url) => ipcRenderer.invoke("formats:fetch", url),
+  fetchFormats: (url) => ipcRenderer.invoke("media:probe", url),
+  probeMedia: (url) => ipcRenderer.invoke("media:probe", url),
+  createJob: (payload) => ipcRenderer.invoke("jobs:create", payload),
+  cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
+  onJobChange: (callback) => ipcRenderer.on("jobs:change", (_event, job) => callback(job)),
   startDownload: (url, format) =>
     ipcRenderer.send("download:start", { url, format }),
   onStatus: (callback) =>

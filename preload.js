@@ -6,10 +6,12 @@ contextBridge.exposeInMainWorld("api", {
   createJob: (payload) => ipcRenderer.invoke("jobs:create", payload),
   cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
   pickMedia: () => ipcRenderer.invoke("tools:pick-media"),
+  pickWatermark: () => ipcRenderer.invoke("tools:pick-watermark"),
   compressMedia: (payload) => ipcRenderer.invoke("tools:compress", payload),
   extractAudio: (payload) => ipcRenderer.invoke("tools:extract-audio", payload),
   createAnimation: (payload) =>
     ipcRenderer.invoke("tools:create-animation", payload),
+  applyWatermark: (payload) => ipcRenderer.invoke("tools:watermark", payload),
   onToolProgress: (callback) => {
     const listener = (_event, progress) => callback(progress);
     ipcRenderer.on("tools:progress", listener);

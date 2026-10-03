@@ -68,6 +68,12 @@ class FfmpegService {
         data.streams?.some((stream) => stream.codec_type === "video") || false,
       hasAudio:
         data.streams?.some((stream) => stream.codec_type === "audio") || false,
+      width:
+        data.streams?.find((stream) => stream.codec_type === "video")?.width ||
+        null,
+      height:
+        data.streams?.find((stream) => stream.codec_type === "video")?.height ||
+        null,
     };
   }
 
@@ -327,6 +333,76 @@ class FfmpegService {
       outputSize: fs.statSync(outputPath).size,
       format: selected,
     };
+  }
+
+  async applyWatermark({
+    inputPath,
+    watermarkPath,
+    position,
+    scale,
+    opacity,
+    outputDir,
+    signal,
+    onProgress,
+  }) {
+    const info = await this.inspect(inputPath);
+    if (!info.hasVideo || !info.width)
+      throw new Error("The selected file has no readable video track.");
+    if (!watermarkPath || !fs.existsSync(watermarkPath))
+      throw new Error("Choose a watermark image first.");
+    const sizePercent = Math.min(50, Math.max(5, Number(scale) || 15));
+    const alpha = Math.min(1, Math.max(0.05, Number(opacity) || 0.75));
+    const width = Math.max(32, Math.round((info.width * sizePercent) / 100));
+    const margin = Math.max(12, Math.round(info.width * 0.012));
+    const positions = {
+      topLeft: `${margin}:${margin}`,
+      topRight: `W-w-${margin}:${margin}`,
+      center: `(W-w)/2:(H-h)/2`,
+      bottomLeft: `${margin}:H-h-${margin}`,
+      bottomRight: `W-w-${margin}:H-h-${margin}`,
+    };
+    const overlay = positions[position] || positions.bottomRight;
+    const outputPath = this.namedOutput(
+      outputDir,
+      inputPath,
+      "watermarked",
+      "mp4",
+    );
+    const filter = `[1:v]format=rgba,colorchannelmixer=aa=${alpha},scale=${width}:-1:flags=lanczos[wm];[0:v][wm]overlay=${overlay}:format=auto`;
+    await this.run(
+      this.ffmpeg,
+      [
+        "-y",
+        "-i",
+        inputPath,
+        "-loop",
+        "1",
+        "-i",
+        watermarkPath,
+        "-filter_complex",
+        filter,
+        "-c:v",
+        "libx264",
+        "-preset",
+        "medium",
+        "-crf",
+        "18",
+        "-pix_fmt",
+        "yuv420p",
+        ...(info.hasAudio ? ["-c:a", "aac", "-b:a", "192k"] : ["-an"]),
+        "-t",
+        String(info.duration),
+        "-movflags",
+        "+faststart",
+        outputPath,
+        "-progress",
+        "pipe:1",
+        "-nostats",
+      ],
+      { signal, onLine: this.progressFor(info.duration, onProgress) },
+    );
+    onProgress?.(100);
+    return { outputPath, outputSize: fs.statSync(outputPath).size };
   }
 }
 

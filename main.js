@@ -87,6 +87,17 @@ function registerIpc() {
     if (result.canceled || !result.filePaths[0]) return null;
     return mediaTools.inspect(result.filePaths[0]);
   });
+  ipcMain.handle("tools:pick-watermark", async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile"],
+      filters: [{ name: "Watermark image", extensions: ["png", "webp"] }],
+    });
+    if (result.canceled || !result.filePaths[0]) return null;
+    return {
+      path: result.filePaths[0],
+      name: path.basename(result.filePaths[0]),
+    };
+  });
   ipcMain.handle("tools:compress", async (event, payload) => {
     try {
       const result = await mediaTools.compressToSize({
@@ -120,6 +131,22 @@ function registerIpc() {
         format: payload.format,
         start: payload.start,
         duration: payload.duration,
+        outputDir: app.getPath("downloads"),
+        onProgress: (progress) => event.sender.send("tools:progress", progress),
+      });
+      return { ok: true, ...result };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+  ipcMain.handle("tools:watermark", async (event, payload) => {
+    try {
+      const result = await mediaTools.applyWatermark({
+        inputPath: payload.path,
+        watermarkPath: payload.watermarkPath,
+        position: payload.position,
+        scale: payload.scale,
+        opacity: payload.opacity,
         outputDir: app.getPath("downloads"),
         onProgress: (progress) => event.sender.send("tools:progress", progress),
       });

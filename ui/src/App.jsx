@@ -159,6 +159,10 @@ function ToolsWorkspace() {
   const [animationFormat, setAnimationFormat] = useState("webp");
   const [clipStart, setClipStart] = useState(0);
   const [clipDuration, setClipDuration] = useState(6);
+  const [watermark, setWatermark] = useState(null);
+  const [watermarkPosition, setWatermarkPosition] = useState("bottomRight");
+  const [watermarkScale, setWatermarkScale] = useState(15);
+  const [watermarkOpacity, setWatermarkOpacity] = useState(75);
   useEffect(() => {
     return window.api.onToolProgress((value) => setProgress(value));
   }, []);
@@ -171,6 +175,13 @@ function ToolsWorkspace() {
     }
   };
   const targetMb = custom === "" ? target : Number(custom);
+  const pickWatermark = async () => {
+    const selected = await window.api.pickWatermark();
+    if (selected) {
+      setWatermark(selected);
+      setResult(null);
+    }
+  };
   const compress = async () => {
     if (!file || busy || !Number.isFinite(targetMb)) return;
     setBusy(true);
@@ -189,18 +200,28 @@ function ToolsWorkspace() {
     setBusy(true);
     setResult(null);
     setProgress(1);
-    const response =
-      mode === "audio"
-        ? await window.api.extractAudio({
-            path: file.path,
-            format: audioFormat,
-          })
-        : await window.api.createAnimation({
-            path: file.path,
-            format: animationFormat,
-            start: clipStart,
-            duration: clipDuration,
-          });
+    let response;
+    if (mode === "audio") {
+      response = await window.api.extractAudio({
+        path: file.path,
+        format: audioFormat,
+      });
+    } else if (mode === "animation") {
+      response = await window.api.createAnimation({
+        path: file.path,
+        format: animationFormat,
+        start: clipStart,
+        duration: clipDuration,
+      });
+    } else {
+      response = await window.api.applyWatermark({
+        path: file.path,
+        watermarkPath: watermark?.path,
+        position: watermarkPosition,
+        scale: watermarkScale,
+        opacity: watermarkOpacity / 100,
+      });
+    }
     setBusy(false);
     setResult(response);
   };
@@ -221,15 +242,29 @@ function ToolsWorkspace() {
             button: "Extract audio",
             busy: "Decoding the original audio track",
           }
-        : {
-            kicker: "MOTION MAKER",
-            title: "Create GIF or animated WebP",
-            text: "Turn a short moment into a lightweight animation for chats and posts.",
-            button: "Create animation",
-            busy: "Rendering frames and colors",
-          };
+        : mode === "animation"
+          ? {
+              kicker: "MOTION MAKER",
+              title: "Create GIF or animated WebP",
+              text: "Turn a short moment into a lightweight animation for chats and posts.",
+              button: "Create animation",
+              busy: "Rendering frames and colors",
+            }
+          : {
+              kicker: "BRAND STUDIO",
+              title: "Add a subtle watermark",
+              text: "Place your transparent logo with precise size and opacity controls.",
+              button: "Apply watermark",
+              busy: "Compositing your branded video",
+            };
   const ToolIcon =
-    mode === "audio" ? ListMusic : mode === "animation" ? Play : Gauge;
+    mode === "audio"
+      ? ListMusic
+      : mode === "animation"
+        ? Play
+        : mode === "watermark"
+          ? BadgeCheck
+          : Gauge;
   return (
     <motion.div
       className="tools-workspace"
@@ -248,6 +283,19 @@ function ToolsWorkspace() {
           <span>
             <b>Fit to size</b>
             <small>Discord-ready video</small>
+          </span>
+        </button>
+        <button
+          className={mode === "watermark" ? "is-active" : ""}
+          onClick={() => {
+            setMode("watermark");
+            setResult(null);
+          }}
+        >
+          <BadgeCheck />
+          <span>
+            <b>Watermark</b>
+            <small>Logo overlay</small>
           </span>
         </button>
         <button
@@ -430,12 +478,82 @@ function ToolsWorkspace() {
             </div>
           </div>
         )}
+        {mode === "watermark" && (
+          <div className="watermark-options">
+            <div className="tool-section-label">
+              <span>WATERMARK</span>
+              <b>PNG or WebP</b>
+            </div>
+            <button
+              className="watermark-picker"
+              onClick={pickWatermark}
+              disabled={busy}
+            >
+              <FolderOpen />
+              <span>
+                <b>{watermark?.name || "Choose transparent logo"}</b>
+                <small>
+                  {watermark
+                    ? "Click to replace"
+                    : "Recommended: high-resolution PNG"}
+                </small>
+              </span>
+            </button>
+            <span className="control-label">Position</span>
+            <div className="position-grid">
+              {[
+                "topLeft",
+                "topRight",
+                "center",
+                "bottomLeft",
+                "bottomRight",
+              ].map((position) => (
+                <button
+                  key={position}
+                  className={
+                    watermarkPosition === position ? "is-selected" : ""
+                  }
+                  onClick={() => setWatermarkPosition(position)}
+                >
+                  <i />
+                </button>
+              ))}
+            </div>
+            <label className="range-control">
+              <span>
+                <b>Size</b>
+                <em>{watermarkScale}%</em>
+              </span>
+              <input
+                type="range"
+                min="5"
+                max="50"
+                value={watermarkScale}
+                onChange={(event) => setWatermarkScale(event.target.value)}
+              />
+            </label>
+            <label className="range-control">
+              <span>
+                <b>Opacity</b>
+                <em>{watermarkOpacity}%</em>
+              </span>
+              <input
+                type="range"
+                min="5"
+                max="100"
+                value={watermarkOpacity}
+                onChange={(event) => setWatermarkOpacity(event.target.value)}
+              />
+            </label>
+          </div>
+        )}
         <button
           className="compress-button"
           disabled={
             !file ||
             busy ||
-            (mode === "size" && (targetMb < 1 || targetMb > 2000))
+            (mode === "size" && (targetMb < 1 || targetMb > 2000)) ||
+            (mode === "watermark" && !watermark)
           }
           onClick={runTool}
         >

@@ -67,7 +67,20 @@ function registerIpc() {
       filters: [
         {
           name: "Media files",
-          extensions: ["mp4", "mkv", "mov", "webm", "avi", "m4v"],
+          extensions: [
+            "mp4",
+            "mkv",
+            "mov",
+            "webm",
+            "avi",
+            "m4v",
+            "mp3",
+            "m4a",
+            "aac",
+            "flac",
+            "wav",
+            "ogg",
+          ],
         },
       ],
     });
@@ -79,6 +92,34 @@ function registerIpc() {
       const result = await mediaTools.compressToSize({
         inputPath: payload.path,
         targetMb: payload.targetMb,
+        outputDir: app.getPath("downloads"),
+        onProgress: (progress) => event.sender.send("tools:progress", progress),
+      });
+      return { ok: true, ...result };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+  ipcMain.handle("tools:extract-audio", async (event, payload) => {
+    try {
+      const result = await mediaTools.extractAudio({
+        inputPath: payload.path,
+        format: payload.format,
+        outputDir: app.getPath("downloads"),
+        onProgress: (progress) => event.sender.send("tools:progress", progress),
+      });
+      return { ok: true, ...result };
+    } catch (error) {
+      return { ok: false, error: error.message };
+    }
+  });
+  ipcMain.handle("tools:create-animation", async (event, payload) => {
+    try {
+      const result = await mediaTools.createAnimation({
+        inputPath: payload.path,
+        format: payload.format,
+        start: payload.start,
+        duration: payload.duration,
         outputDir: app.getPath("downloads"),
         onProgress: (progress) => event.sender.send("tools:progress", progress),
       });

@@ -83,6 +83,34 @@ class FfmpegService {
     return candidate;
   }
 
+  namedOutput(outputDir, inputPath, suffix, extension) {
+    const base = path
+      .basename(inputPath, path.extname(inputPath))
+      .replace(/[<>:"/\\|?*]/g, "_");
+    let candidate = path.join(outputDir, `${base} - ${suffix}.${extension}`);
+    let number = 2;
+    while (fs.existsSync(candidate))
+      candidate = path.join(
+        outputDir,
+        `${base} - ${suffix} (${number++}).${extension}`,
+      );
+    return candidate;
+  }
+
+  progressFor(duration, onProgress) {
+    let outTimeMs = 0;
+    return (line) => {
+      if (line.startsWith("out_time_ms=")) outTimeMs = Number(line.slice(12));
+      if (line === "progress=continue" || line === "progress=end") {
+        const ratio = Math.min(
+          1,
+          Math.max(0, outTimeMs / 1_000_000 / duration),
+        );
+        onProgress?.(Math.round(ratio * 100));
+      }
+    };
+  }
+
   async compressToSize({ inputPath, targetMb, outputDir, signal, onProgress }) {
     const target = Number(targetMb);
     if (!Number.isFinite(target) || target < 1 || target > 2000)
@@ -185,6 +213,120 @@ class FfmpegService {
     } finally {
       fs.rmSync(tempDir, { recursive: true, force: true });
     }
+  }
+
+  async extractAudio({ inputPath, format, outputDir, signal, onProgress }) {
+    const selected = String(format).toLowerCase();
+    if (!["flac", "wav"].includes(selected))
+      throw new Error("Choose FLAC or WAV.");
+    const info = await this.inspect(inputPath);
+    if (!info.hasAudio)
+      throw new Error("The selected file has no audio track.");
+    const outputPath = this.namedOutput(
+      outputDir,
+      inputPath,
+      "audio",
+      selected,
+    );
+    const codec =
+      selected === "flac"
+        ? ["-c:a", "flac", "-compression_level", "8"]
+        : ["-c:a", "pcm_s24le"];
+    await this.run(
+      this.ffmpeg,
+      [
+        "-y",
+        "-i",
+        inputPath,
+        "-vn",
+        ...codec,
+        outputPath,
+        "-progress",
+        "pipe:1",
+        "-nostats",
+      ],
+      { signal, onLine: this.progressFor(info.duration, onProgress) },
+    );
+    onProgress?.(100);
+    return {
+      outputPath,
+      outputSize: fs.statSync(outputPath).size,
+      format: selected,
+    };
+  }
+
+  async createAnimation({
+    inputPath,
+    format,
+    start,
+    duration,
+    outputDir,
+    signal,
+    onProgress,
+  }) {
+    const selected = String(format).toLowerCase();
+    if (!["gif", "webp"].includes(selected))
+      throw new Error("Choose GIF or WebP.");
+    const info = await this.inspect(inputPath);
+    if (!info.hasVideo)
+      throw new Error("The selected file has no video track.");
+    const clipStart = Math.max(0, Number(start) || 0);
+    const clipDuration = Math.min(
+      30,
+      Math.max(1, Number(duration) || 6),
+      info.duration - clipStart,
+    );
+    if (clipDuration <= 0)
+      throw new Error("The start time is outside the video.");
+    const outputPath = this.namedOutput(
+      outputDir,
+      inputPath,
+      "animation",
+      selected,
+    );
+    const encoding =
+      selected === "gif"
+        ? [
+            "-filter_complex",
+            "[0:v]fps=12,scale=480:-2:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=sierra2_4a",
+            "-loop",
+            "0",
+          ]
+        : [
+            "-vf",
+            "fps=15,scale=720:-2:flags=lanczos",
+            "-c:v",
+            "libwebp_anim",
+            "-q:v",
+            "76",
+            "-loop",
+            "0",
+          ];
+    await this.run(
+      this.ffmpeg,
+      [
+        "-y",
+        "-ss",
+        String(clipStart),
+        "-t",
+        String(clipDuration),
+        "-i",
+        inputPath,
+        ...encoding,
+        "-an",
+        outputPath,
+        "-progress",
+        "pipe:1",
+        "-nostats",
+      ],
+      { signal, onLine: this.progressFor(clipDuration, onProgress) },
+    );
+    onProgress?.(100);
+    return {
+      outputPath,
+      outputSize: fs.statSync(outputPath).size,
+      format: selected,
+    };
   }
 }
 

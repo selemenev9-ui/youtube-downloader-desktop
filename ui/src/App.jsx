@@ -148,14 +148,19 @@ const SIZE_PRESETS = [
 ];
 
 function ToolsWorkspace() {
+  const [mode, setMode] = useState("size");
   const [file, setFile] = useState(null);
   const [target, setTarget] = useState(8);
   const [custom, setCustom] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
   const [result, setResult] = useState(null);
+  const [audioFormat, setAudioFormat] = useState("flac");
+  const [animationFormat, setAnimationFormat] = useState("webp");
+  const [clipStart, setClipStart] = useState(0);
+  const [clipDuration, setClipDuration] = useState(6);
   useEffect(() => {
-    window.api.onToolProgress((value) => setProgress(value));
+    return window.api.onToolProgress((value) => setProgress(value));
   }, []);
   const pickFile = async () => {
     const selected = await window.api.pickMedia();
@@ -178,24 +183,109 @@ function ToolsWorkspace() {
     setBusy(false);
     setResult(response);
   };
+  const runTool = async () => {
+    if (mode === "size") return compress();
+    if (!file || busy) return;
+    setBusy(true);
+    setResult(null);
+    setProgress(1);
+    const response =
+      mode === "audio"
+        ? await window.api.extractAudio({
+            path: file.path,
+            format: audioFormat,
+          })
+        : await window.api.createAnimation({
+            path: file.path,
+            format: animationFormat,
+            start: clipStart,
+            duration: clipDuration,
+          });
+    setBusy(false);
+    setResult(response);
+  };
+  const toolCopy =
+    mode === "size"
+      ? {
+          kicker: "LOCAL OPTIMIZER",
+          title: "Fit video to an exact size",
+          text: "Perfect for Discord, messengers and upload limits. Nothing leaves your PC.",
+          button: "Optimize video",
+          busy: "Two-pass precision encoding",
+        }
+      : mode === "audio"
+        ? {
+            kicker: "AUDIO LAB",
+            title: "Extract pristine audio",
+            text: "Create a FLAC or studio-compatible WAV locally without uploading the source.",
+            button: "Extract audio",
+            busy: "Decoding the original audio track",
+          }
+        : {
+            kicker: "MOTION MAKER",
+            title: "Create GIF or animated WebP",
+            text: "Turn a short moment into a lightweight animation for chats and posts.",
+            button: "Create animation",
+            busy: "Rendering frames and colors",
+          };
+  const ToolIcon =
+    mode === "audio" ? ListMusic : mode === "animation" ? Play : Gauge;
   return (
     <motion.div
       className="tools-workspace"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
+      <div className="tool-switcher">
+        <button
+          className={mode === "size" ? "is-active" : ""}
+          onClick={() => {
+            setMode("size");
+            setResult(null);
+          }}
+        >
+          <Gauge />
+          <span>
+            <b>Fit to size</b>
+            <small>Discord-ready video</small>
+          </span>
+        </button>
+        <button
+          className={mode === "audio" ? "is-active" : ""}
+          onClick={() => {
+            setMode("audio");
+            setResult(null);
+          }}
+        >
+          <ListMusic />
+          <span>
+            <b>Audio</b>
+            <small>FLAC or WAV</small>
+          </span>
+        </button>
+        <button
+          className={mode === "animation" ? "is-active" : ""}
+          onClick={() => {
+            setMode("animation");
+            setResult(null);
+          }}
+        >
+          <Play />
+          <span>
+            <b>Animation</b>
+            <small>GIF or WebP</small>
+          </span>
+        </button>
+      </div>
       <section className="glass-panel tool-intro">
         <div className="tool-heading">
           <span className="panel-icon">
-            <Gauge />
+            <ToolIcon />
           </span>
           <div>
-            <small>LOCAL OPTIMIZER</small>
-            <h2>Fit video to an exact size</h2>
-            <p>
-              Perfect for Discord, messengers and upload limits. Nothing leaves
-              your PC.
-            </p>
+            <small>{toolCopy.kicker}</small>
+            <h2>{toolCopy.title}</h2>
+            <p>{toolCopy.text}</p>
           </div>
         </div>
         <button
@@ -207,66 +297,153 @@ function ToolsWorkspace() {
             <FolderOpen />
           </span>
           <div>
-            <b>{file?.name || "Choose a video"}</b>
+            <b>{file?.name || "Choose a media file"}</b>
             <small>
               {file
                 ? `${(file.size / 1024 / 1024).toFixed(1)} MB · ${Math.ceil(file.duration)} sec`
-                : "MP4, MKV, MOV, WebM or AVI"}
+                : "Video or audio · processed locally"}
             </small>
           </div>
           <em>{file ? "Change" : "Browse"}</em>
         </button>
       </section>
       <section className="glass-panel size-tool">
-        <div className="tool-section-label">
-          <span>OUTPUT LIMIT</span>
-          <b>{targetMb || 0} MB</b>
-        </div>
-        <div className="size-presets">
-          {SIZE_PRESETS.map((preset) => (
+        {mode === "size" && (
+          <>
+            <div className="tool-section-label">
+              <span>OUTPUT LIMIT</span>
+              <b>{targetMb || 0} MB</b>
+            </div>
+            <div className="size-presets">
+              {SIZE_PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  className={
+                    custom === "" && target === preset.value
+                      ? "is-selected"
+                      : ""
+                  }
+                  onClick={() => {
+                    setTarget(preset.value);
+                    setCustom("");
+                  }}
+                  disabled={busy}
+                >
+                  <b>{preset.label}</b>
+                  <small>{preset.note}</small>
+                </button>
+              ))}
+            </div>
+            <label className="custom-size">
+              <span>Custom target</span>
+              <div>
+                <input
+                  type="number"
+                  min="1"
+                  max="2000"
+                  value={custom}
+                  placeholder="Enter size"
+                  onChange={(event) => setCustom(event.target.value)}
+                  disabled={busy}
+                />
+                <b>MB</b>
+              </div>
+            </label>
+          </>
+        )}
+        {mode === "audio" && (
+          <div className="format-options">
+            <div className="tool-section-label">
+              <span>AUDIO FORMAT</span>
+              <b>Lossless output</b>
+            </div>
             <button
-              key={preset.value}
-              className={
-                custom === "" && target === preset.value ? "is-selected" : ""
-              }
-              onClick={() => {
-                setTarget(preset.value);
-                setCustom("");
-              }}
-              disabled={busy}
+              className={audioFormat === "flac" ? "is-selected" : ""}
+              onClick={() => setAudioFormat("flac")}
             >
-              <b>{preset.label}</b>
-              <small>{preset.note}</small>
+              <b>FLAC</b>
+              <small>Smaller file · metadata friendly</small>
             </button>
-          ))}
-        </div>
-        <label className="custom-size">
-          <span>Custom target</span>
-          <div>
-            <input
-              type="number"
-              min="1"
-              max="2000"
-              value={custom}
-              placeholder="Enter size"
-              onChange={(event) => setCustom(event.target.value)}
-              disabled={busy}
-            />
-            <b>MB</b>
+            <button
+              className={audioFormat === "wav" ? "is-selected" : ""}
+              onClick={() => setAudioFormat("wav")}
+            >
+              <b>WAV 24-bit</b>
+              <small>Maximum compatibility for editors</small>
+            </button>
+            <p>
+              Lossless output preserves the decoded source; it cannot restore
+              detail already removed by the original platform.
+            </p>
           </div>
-        </label>
+        )}
+        {mode === "animation" && (
+          <div className="animation-options">
+            <div className="tool-section-label">
+              <span>ANIMATION</span>
+              <b>Maximum 30 sec</b>
+            </div>
+            <div className="format-row">
+              <button
+                className={animationFormat === "webp" ? "is-selected" : ""}
+                onClick={() => setAnimationFormat("webp")}
+              >
+                <b>WebP</b>
+                <small>Compact · smooth</small>
+              </button>
+              <button
+                className={animationFormat === "gif" ? "is-selected" : ""}
+                onClick={() => setAnimationFormat("gif")}
+              >
+                <b>GIF</b>
+                <small>Universal</small>
+              </button>
+            </div>
+            <div className="clip-fields">
+              <label>
+                <span>Start</span>
+                <div>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={clipStart}
+                    onChange={(event) => setClipStart(event.target.value)}
+                  />
+                  <b>sec</b>
+                </div>
+              </label>
+              <label>
+                <span>Duration</span>
+                <div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="30"
+                    step="1"
+                    value={clipDuration}
+                    onChange={(event) => setClipDuration(event.target.value)}
+                  />
+                  <b>sec</b>
+                </div>
+              </label>
+            </div>
+          </div>
+        )}
         <button
           className="compress-button"
-          disabled={!file || busy || targetMb < 1 || targetMb > 2000}
-          onClick={compress}
+          disabled={
+            !file ||
+            busy ||
+            (mode === "size" && (targetMb < 1 || targetMb > 2000))
+          }
+          onClick={runTool}
         >
           <Download />
           <span>
-            <b>{busy ? `Optimizing · ${progress}%` : "Optimize video"}</b>
+            <b>{busy ? `Processing · ${progress}%` : toolCopy.button}</b>
             <small>
-              {busy
-                ? "Two-pass precision encoding"
-                : "Save the result to Downloads"}
+              {busy ? toolCopy.busy : "Save the result to Downloads"}
             </small>
           </span>
         </button>

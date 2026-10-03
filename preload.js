@@ -7,8 +7,14 @@ contextBridge.exposeInMainWorld("api", {
   cancelJob: (id) => ipcRenderer.invoke("jobs:cancel", id),
   pickMedia: () => ipcRenderer.invoke("tools:pick-media"),
   compressMedia: (payload) => ipcRenderer.invoke("tools:compress", payload),
-  onToolProgress: (callback) =>
-    ipcRenderer.on("tools:progress", (_event, progress) => callback(progress)),
+  extractAudio: (payload) => ipcRenderer.invoke("tools:extract-audio", payload),
+  createAnimation: (payload) =>
+    ipcRenderer.invoke("tools:create-animation", payload),
+  onToolProgress: (callback) => {
+    const listener = (_event, progress) => callback(progress);
+    ipcRenderer.on("tools:progress", listener);
+    return () => ipcRenderer.removeListener("tools:progress", listener);
+  },
   onJobChange: (callback) =>
     ipcRenderer.on("jobs:change", (_event, job) => callback(job)),
   startDownload: (url, format) =>

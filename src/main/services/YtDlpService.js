@@ -5,51 +5,140 @@ const { normalizeMetadata } = require("../media/MetadataNormalizer");
 const { normalizeMediaUrl } = require("../media/url");
 
 class YtDlpService {
-  constructor({ executable, ffmpeg }) { this.executable = executable; this.ffmpeg = ffmpeg; }
+  constructor({ executable, ffmpeg }) {
+    this.executable = executable;
+    this.ffmpeg = ffmpeg;
+  }
 
   run(args, { onLine, signal } = {}) {
     return new Promise((resolve, reject) => {
-      const child = spawn(this.executable, args, { windowsHide: true, shell: false, signal });
-      let stdout = "", stderr = "";
+      const child = spawn(this.executable, args, {
+        windowsHide: true,
+        shell: false,
+        signal,
+      });
+      let stdout = "",
+        stderr = "";
       const consume = (chunk, isError) => {
         const text = chunk.toString();
-        if (isError) stderr += text; else stdout += text;
-        text.split(/\r?\n/).filter(Boolean).forEach((line) => onLine?.(line));
+        if (isError) stderr += text;
+        else stdout += text;
+        text
+          .split(/[\r\n]+/)
+          .filter(Boolean)
+          .forEach((line) => onLine?.(line));
       };
       child.stdout.on("data", (d) => consume(d, false));
       child.stderr.on("data", (d) => consume(d, true));
       child.on("error", reject);
-      child.on("close", (code) => code === 0 ? resolve({ stdout, stderr }) : reject(new Error(this.friendlyError(stderr, code))));
+      child.on("close", (code) =>
+        code === 0
+          ? resolve({ stdout, stderr })
+          : reject(new Error(this.friendlyError(stderr, code))),
+      );
     });
   }
 
   friendlyError(stderr, code) {
     const text = stderr || "";
-    if (/login required|sign in|authentication|cookies/i.test(text)) return "This media requires a login and cannot be downloaded privately.";
-    if (/private|not available/i.test(text)) return "This media is private or unavailable.";
-    if (/unsupported url/i.test(text)) return "This website or URL is not supported by the current download engine.";
-    return text.split(/\r?\n/).filter((line) => /error:/i.test(line)).at(-1)?.replace(/^.*?ERROR:\s*/i, "") || `Download engine exited with code ${code}.`;
+    if (/login required|sign in|authentication|cookies/i.test(text))
+      return "This media requires a login and cannot be downloaded privately.";
+    if (/private|not available/i.test(text))
+      return "This media is private or unavailable.";
+    if (/unsupported url/i.test(text))
+      return "This website or URL is not supported by the current download engine.";
+    return (
+      text
+        .split(/\r?\n/)
+        .filter((line) => /error:/i.test(line))
+        .at(-1)
+        ?.replace(/^.*?ERROR:\s*/i, "") ||
+      `Download engine exited with code ${code}.`
+    );
   }
 
   async probe(inputUrl) {
     const url = normalizeMediaUrl(inputUrl);
-    const { stdout } = await this.run(["--dump-single-json", "--no-playlist", "--skip-download", "--no-warnings", "--", url]);
+    const { stdout } = await this.run([
+      "--dump-single-json",
+      "--no-playlist",
+      "--skip-download",
+      "--no-warnings",
+      "--",
+      url,
+    ]);
     const info = JSON.parse(stdout);
-    return { ok: true, formats: availableChoices(info), meta: normalizeMetadata(info) };
+    return {
+      ok: true,
+      formats: availableChoices(info),
+      meta: normalizeMetadata(info),
+    };
   }
 
-  async download({ inputUrl, format, outputDir, onProgress, signal }) {
+  async download({
+    inputUrl,
+    format,
+    liveDuration,
+    outputDir,
+    onProgress,
+    signal,
+  }) {
     const url = normalizeMediaUrl(inputUrl);
     const plan = downloadPlan(format);
     let outputPath = null;
-    const args = ["--ffmpeg-location", this.ffmpeg, "--no-playlist", "--newline", "--progress-template", "download:progress:%(progress._percent_str)s|%(progress.eta)s", "--print", "after_move:filepath:%(filepath)s", "-o", path.join(outputDir, "%(title)s.%(ext)s"), ...plan.args, "--", url];
-    await this.run(args, { signal, onLine: (line) => {
-      if (line.startsWith("progress:")) {
-        const [rawPercent, eta] = line.slice(9).split("|");
-        const percent = Number.parseFloat(String(rawPercent).replace(/[^0-9.]/g, ""));
-        if (Number.isFinite(percent)) onProgress?.({ percent, eta: eta && eta !== "NA" ? eta : null });
-      } else if (line.startsWith("filepath:")) outputPath = line.slice(9).trim();
-    }});
+    const durationSeconds = Number(liveDuration);
+    const liveArgs =
+      Number.isFinite(durationSeconds) && durationSeconds > 0
+        ? [
+            "--downloader",
+            "ffmpeg",
+            "--downloader-args",
+            `ffmpeg:-t ${Math.round(durationSeconds)}`,
+          ]
+        : [];
+    const args = [
+      "--ffmpeg-location",
+      this.ffmpeg,
+      "--no-playlist",
+      "--newline",
+      "--progress-template",
+      "download:progress:%(progress._percent_str)s|%(progress.eta)s",
+      "--print",
+      "after_move:filepath:%(filepath)s",
+      "-o",
+      path.join(outputDir, "%(title)s.%(ext)s"),
+      ...plan.args,
+      ...liveArgs,
+      "--",
+      url,
+    ];
+    await this.run(args, {
+      signal,
+      onLine: (line) => {
+        if (line.startsWith("progress:")) {
+          const [rawPercent, eta] = line.slice(9).split("|");
+          const percent = Number.parseFloat(
+            String(rawPercent).replace(/[^0-9.]/g, ""),
+          );
+          if (Number.isFinite(percent))
+            onProgress?.({ percent, eta: eta && eta !== "NA" ? eta : null });
+        } else if (durationSeconds > 0 && /time=\d{2}:\d{2}:\d{2}/.test(line)) {
+          const match = line.match(/time=(\d{2}):(\d{2}):(\d{2}(?:\.\d+)?)/);
+          if (match) {
+            const elapsed =
+              Number(match[1]) * 3600 +
+              Number(match[2]) * 60 +
+              Number(match[3]);
+            const percent = Math.min(99, (elapsed / durationSeconds) * 100);
+            onProgress?.({
+              percent,
+              eta: Math.max(0, Math.ceil(durationSeconds - elapsed)),
+            });
+          }
+        } else if (line.startsWith("filepath:"))
+          outputPath = line.slice(9).trim();
+      },
+    });
     return { outputPath: outputPath || outputDir, kind: plan.kind };
   }
 }

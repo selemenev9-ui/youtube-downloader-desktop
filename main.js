@@ -77,7 +77,11 @@ function registerIpc() {
     }
   });
   ipcMain.handle("jobs:create", (_event, payload) =>
-    jobs.create({ url: payload.url, format: payload.format }),
+    jobs.create({
+      url: payload.url,
+      format: payload.format,
+      liveDuration: payload.liveDuration,
+    }),
   );
   ipcMain.handle("jobs:cancel", (_event, id) => jobs.cancel(id));
   ipcMain.handle("tools:pick-media", async () => {
@@ -184,7 +188,11 @@ function registerIpc() {
   // Compatibility events for the v1 React screen while the v2 queue UI is introduced.
   ipcMain.on("download:start", (event, payload) => {
     try {
-      jobs.create({ url: payload.url, format: payload.format });
+      jobs.create({
+        url: payload.url,
+        format: payload.format,
+        liveDuration: payload.liveDuration,
+      });
     } catch (error) {
       event.sender.send("download:done", {
         success: false,

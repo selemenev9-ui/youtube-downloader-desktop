@@ -21,8 +21,8 @@ contextBridge.exposeInMainWorld("api", {
   },
   onJobChange: (callback) =>
     ipcRenderer.on("jobs:change", (_event, job) => callback(job)),
-  startDownload: (url, format) =>
-    ipcRenderer.send("download:start", { url, format }),
+  startDownload: (url, format, liveDuration) =>
+    ipcRenderer.send("download:start", { url, format, liveDuration }),
   onStatus: (callback) =>
     ipcRenderer.on("download:status", (_event, status) => callback(status)),
   onProgress: (callback) =>

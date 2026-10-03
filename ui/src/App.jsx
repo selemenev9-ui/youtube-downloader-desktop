@@ -809,10 +809,47 @@ function UrlPanel({ url, setUrl, onClear, onFetch, busy, fetching, valid }) {
   );
 }
 
-function QualityPanel({ formats, selected, setSelected, busy }) {
+function QualityPanel({
+  formats,
+  selected,
+  setSelected,
+  busy,
+  live,
+  liveMinutes,
+  setLiveMinutes,
+}) {
   const [open, setOpen] = useState(false);
   const current = formats.find((f) => f.id === selected);
   const info = current ? tier(current.id) : null;
+  if (live) {
+    return (
+      <motion.section
+        className="glass-panel quality-panel live-panel"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+      >
+        <SectionLabel
+          icon={Clock3}
+          eyebrow="LIVE RECORDING"
+          title="Choose duration"
+          copy="Recording starts from the current moment."
+        />
+        <div className="live-duration-grid">
+          {[5, 15, 30, 60].map((minutes) => (
+            <button
+              key={minutes}
+              className={liveMinutes === minutes ? "is-selected" : ""}
+              disabled={busy}
+              onClick={() => setLiveMinutes(minutes)}
+            >
+              <b>{minutes}</b>
+              <small>MIN</small>
+            </button>
+          ))}
+        </div>
+      </motion.section>
+    );
+  }
   return (
     <motion.section
       className="glass-panel quality-panel"
@@ -908,7 +945,7 @@ function QualityPanel({ formats, selected, setSelected, busy }) {
   );
 }
 
-function DownloadPanel({ ready, busy, statusText, onClick }) {
+function DownloadPanel({ ready, busy, statusText, onClick, live }) {
   return (
     <motion.button
       className="download-panel"
@@ -925,7 +962,7 @@ function DownloadPanel({ ready, busy, statusText, onClick }) {
       </span>
       <span className="download-copy">
         <small>{busy ? "IN PROGRESS" : ready ? "READY" : "NEXT STEP"}</small>
-        <b>Download</b>
+        <b>{live ? "Record live" : "Download"}</b>
         <em>{statusText}</em>
       </span>
       <span className="download-arrow">↘</span>
@@ -1128,6 +1165,7 @@ export default function App() {
   const [url, setUrl] = useState("");
   const [formats, setFormats] = useState([]);
   const [selected, setSelected] = useState("");
+  const [liveMinutes, setLiveMinutes] = useState(15);
   const [meta, setMeta] = useState(null);
   const [fetching, setFetching] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -1215,8 +1253,9 @@ export default function App() {
     if (!selected || !meta || busy) return;
     const id = Date.now();
     activeDownload.current = id;
-    const formatLabel =
-      selected === "audio"
+    const formatLabel = meta.isLive
+      ? `LIVE · ${liveMinutes} min`
+      : selected === "audio"
         ? "MP3 · Audio"
         : selected === "best"
           ? "Best available"
@@ -1234,7 +1273,12 @@ export default function App() {
       ...items,
     ]);
     setBusy(true);
-    window.api.startDownload(url.trim(), selected);
+    if (meta.isLive) setStatusText(`Recording live · ${liveMinutes} min`);
+    window.api.startDownload(
+      url.trim(),
+      selected,
+      meta.isLive ? liveMinutes * 60 : null,
+    );
   };
   const valid = URL_RE.test(url.trim()),
     ready = formats.length > 0 && !fetching;
@@ -1328,12 +1372,16 @@ export default function App() {
                   selected={selected}
                   setSelected={setSelected}
                   busy={busy}
+                  live={meta?.isLive}
+                  liveMinutes={liveMinutes}
+                  setLiveMinutes={setLiveMinutes}
                 />
                 <DownloadPanel
                   ready={ready}
                   busy={busy}
                   statusText={statusText}
                   onClick={startDownload}
+                  live={meta?.isLive}
                 />
               </div>
               <DownloadsPanel

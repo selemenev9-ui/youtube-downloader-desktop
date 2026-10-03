@@ -5,9 +5,10 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const pkg = require(path.join(root, "package.json"));
+const version = process.env.VANTAFETCH_MODULE_VERSION || pkg.version;
 const stage = path.join(root, "dist-module-stage");
 const outputDir = path.join(root, "dist", "updates");
-const outputName = `vantafetch-app-${pkg.version}.asar`;
+const outputName = `vantafetch-app-${version}.asar`;
 const outputPath = path.join(outputDir, outputName);
 
 fs.rmSync(stage, { recursive: true, force: true });
@@ -23,7 +24,7 @@ asar.createPackage(stage, outputPath).then(() => {
   const manifest = {
     schema: 1,
     bootstrap: 1,
-    version: pkg.version,
+    version,
     module: { asset: outputName, sha256, size: data.length },
   };
   fs.writeFileSync(

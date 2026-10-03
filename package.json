@@ -8,6 +8,7 @@
     "start": "vite build && electron .",
     "build:ui": "vite build",
     "build:module": "vite build && node scripts/build-module.js",
+    "test:module-upgrade": "node scripts/test-modular-upgrade.js",
     "dist": "vite build && electron-builder --win"
   },
   "license": "MIT",
